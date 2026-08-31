@@ -1,0 +1,10 @@
+.env
+__pycache__/
+*.pyc
+*.session
+*.session-journal
+*.session-shm
+*.session-wal
+bot.db
+bot.db-shm
+bot.db-wal
