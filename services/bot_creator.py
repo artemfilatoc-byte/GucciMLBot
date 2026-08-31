@@ -24,8 +24,6 @@ from telethon.errors import RPCError
 
 from telethon.sessions import StringSession
 
-from telethon.tl.functions import account as account_funcs
-
 from telethon.tl.functions import bots
 
 
@@ -93,6 +91,7 @@ _BOT_BATCH_ITEM_TIMEOUT = 180
 _ACCOUNT_CONNECT_TIMEOUT = 30
 
 _LONG_BOTFATHER_RETRY_SECONDS = 60
+_USERNAME_CHECK_TIMEOUT_SECONDS = 8
 
 _account_unavailable_errors = {
 
@@ -412,11 +411,27 @@ class UsernameCandidateSelector:
 
     async def next_available(self, client: TelegramClient) -> str:
 
+        attempts = 0
+
+        while attempts < BOT_USERNAME_MAX_ATTEMPTS:
+
+            candidate = await self._next_candidate()
+
+            attempts += 1
+
+            if await _check_username_available(client, candidate):
+
+                return candidate
+
+        raise RuntimeError("не удалось подобрать свободный username")
+
+
+
+    async def _next_candidate(self) -> str:
+
         async with self._lock:
 
-            attempts = 0
-
-            while attempts < BOT_USERNAME_MAX_ATTEMPTS:
+            while True:
 
                 candidate = next(self._candidates)
 
@@ -426,15 +441,9 @@ class UsernameCandidateSelector:
 
                     continue
 
-                attempts += 1
+                self._reserved.add(key)
 
-                if await _check_username_available(client, candidate):
-
-                    self._reserved.add(key)
-
-                    return candidate
-
-            raise RuntimeError("не удалось подобрать свободный username")
+                return candidate
 
 
 
@@ -1040,19 +1049,7 @@ async def _create_batch_item(
 
             for _ in range(10):
 
-                try:
-
-                    bot_username = await asyncio.wait_for(
-
-                        selector.next_available(user_client),
-
-                        timeout=30,
-
-                    )
-
-                except asyncio.TimeoutError as exc:
-
-                    raise RuntimeError("таймаут подбора username") from exc
+                bot_username = await selector.next_available(user_client)
 
                 try:
 
@@ -1468,17 +1465,43 @@ async def _run_account_step(step: Awaitable[_T]) -> _T:
 
 async def _check_username_available(client: TelegramClient, username: str) -> bool:
 
-                                                                                           
-
-                                                                                      
-
-                                                                                                               
-
     if not _is_valid_final_username(username):
 
         return False
 
-    return True
+    try:
+
+        return bool(
+
+            await asyncio.wait_for(
+
+                client(bots.CheckUsernameRequest(username)),
+
+                timeout=_USERNAME_CHECK_TIMEOUT_SECONDS,
+
+            )
+
+        )
+
+    except asyncio.TimeoutError:
+
+        logger.warning("Username availability check timed out for %s", username)
+
+        return True
+
+    except RPCError as exc:
+
+        if _is_username_unavailable_error(exc):
+
+            return False
+
+        if _is_account_unavailable_error(exc):
+
+            raise AccountUnavailableError from exc
+
+        logger.warning("Username availability check failed for %s", username, exc_info=True)
+
+        return True
 
 
 
