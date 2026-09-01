@@ -8,7 +8,7 @@ from aiogram.fsm.state import State, StatesGroup
 
 from aiogram.types import CallbackQuery, Message
 
-from core.config import get_app_temp_dir
+from core.temp_files import app_temp_dir
 
 
 
@@ -480,12 +480,6 @@ async def receive_proxy_file(message: Message, state: FSMContext, bot: Bot) -> N
 
                       
 
-    import tempfile
-
-    from pathlib import Path
-
-
-
     from repositories.account import bulk_assign_proxies, count_accounts
 
     from services.telegram_client import parse_proxy_url
@@ -500,17 +494,9 @@ async def receive_proxy_file(message: Message, state: FSMContext, bot: Bot) -> N
 
 
 
-    with tempfile.TemporaryDirectory(
+    with app_temp_dir("filya_proxies_") as tmp:
 
-        prefix="filya_proxies_",
-
-        dir=get_app_temp_dir(),
-
-        ignore_cleanup_errors=True,
-
-    ) as tmp:
-
-        tmp_path = Path(tmp) / "proxies.txt"
+        tmp_path = tmp / "proxies.txt"
 
         await bot.download(message.document, destination=tmp_path)
 
