@@ -68,6 +68,32 @@ def _optional_int(name: str, default: int) -> int:
 
 
 
+def _optional_path(name: str, default: Path) -> Path:
+
+    value = os.environ.get(name)
+
+    if value is None:
+
+        return default.resolve()
+
+    path = Path(value).expanduser()
+
+    return path.resolve() if path.is_absolute() else (BASE_DIR / path).resolve()
+
+
+
+APP_TEMP_DIR = _optional_path("APP_TEMP_DIR", BASE_DIR / ".runtime" / "tmp")
+
+
+
+def get_app_temp_dir() -> Path:
+
+    APP_TEMP_DIR.mkdir(parents=True, exist_ok=True)
+
+    return APP_TEMP_DIR
+
+
+
 
 
 @dataclass(frozen=True)

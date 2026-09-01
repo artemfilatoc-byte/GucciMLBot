@@ -8,6 +8,8 @@ from aiogram.fsm.state import State, StatesGroup
 
 from aiogram.types import CallbackQuery, Message
 
+from core.config import get_app_temp_dir
+
 
 
 from keyboards.menu import (
@@ -498,7 +500,15 @@ async def receive_proxy_file(message: Message, state: FSMContext, bot: Bot) -> N
 
 
 
-    with tempfile.TemporaryDirectory() as tmp:
+    with tempfile.TemporaryDirectory(
+
+        prefix="filya_proxies_",
+
+        dir=get_app_temp_dir(),
+
+        ignore_cleanup_errors=True,
+
+    ) as tmp:
 
         tmp_path = Path(tmp) / "proxies.txt"
 

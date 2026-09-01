@@ -22,6 +22,7 @@ GucciMLBot is a Python Telegram bot built with aiogram 3.15, SQLAlchemy async, S
 Useful optional env values:
 
 - `DATABASE_URL`
+- `APP_TEMP_DIR`
 - `TELETHON_CONNECT_TIMEOUT`
 - `TELETHON_IMPORT_CONCURRENCY`
 - `ACCOUNT_IMPORT_MAX_FILE_SIZE_MB`
@@ -102,6 +103,7 @@ Admin:
 - Each Telegram account has an in-memory lock in `services.bot_creator` to avoid concurrent BotFather operations for the same account.
 - Batch creation stores item results as they arrive, making restart recovery possible.
 - SQLite gets WAL mode, foreign keys, and busy timeout pragmas.
+- Runtime temp files use `APP_TEMP_DIR`, defaulting to `.runtime/tmp` inside the project.
 - There is no test suite in the repository yet.
 - No README is present yet.
 

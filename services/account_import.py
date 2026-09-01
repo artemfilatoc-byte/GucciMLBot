@@ -38,6 +38,8 @@ from core.config import (
 
     TELETHON_IMPORT_CONCURRENCY,
 
+    get_app_temp_dir,
+
 )
 
 from repositories.account import TelegramAccountPayload, upsert_account
@@ -242,7 +244,15 @@ async def _import_account_document(
 
 
 
-    with tempfile.TemporaryDirectory(prefix="filya_accounts_") as temp_dir_raw:
+    with tempfile.TemporaryDirectory(
+
+        prefix="filya_accounts_",
+
+        dir=get_app_temp_dir(),
+
+        ignore_cleanup_errors=True,
+
+    ) as temp_dir_raw:
 
         temp_dir = Path(temp_dir_raw)
 
