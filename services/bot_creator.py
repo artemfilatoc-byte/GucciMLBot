@@ -36,7 +36,11 @@ from core.config import (
 
     BOT_CREATE_DELAY_MIN_SECONDS,
 
+    BOT_CREATE_MAX_PER_ACCOUNT,
+
     BOT_CREATE_MAX_COUNT,
+
+    BOT_USERNAME_PRECHECK,
 
     BOT_USERNAME_MAX_ATTEMPTS,
 
@@ -743,6 +747,20 @@ async def _create_bots_via_botfather(
 
     await asyncio.gather(*workers)
 
+    await _fail_remaining_batch_items(
+
+        progress_callback,
+
+        item_callback,
+
+        state,
+
+        work_queue,
+
+        "не хватило аккаунтов с доступным лимитом создания",
+
+    )
+
 
 
     return BotBatchCreateResult(
@@ -783,7 +801,15 @@ async def _run_account_batch_worker(
 
     cooldown_until = 0.0
 
+    handled_items = 0
+
+    max_items = normalize_bot_count_per_account(BOT_CREATE_MAX_PER_ACCOUNT)
+
     while True:
+
+        if max_items is not None and handled_items >= max_items:
+
+            return
 
         if should_stop_callback is not None and await should_stop_callback():
 
@@ -998,6 +1024,8 @@ async def _run_account_batch_worker(
         else:
 
             await _append_batch_item(progress_callback, item_callback, state, item)
+
+        handled_items += 1
 
         cooldown_until = asyncio.get_running_loop().time() + _next_create_delay()
 
@@ -1469,6 +1497,10 @@ async def _check_username_available(client: TelegramClient, username: str) -> bo
 
         return False
 
+    if not BOT_USERNAME_PRECHECK:
+
+        return True
+
     try:
 
         return bool(
@@ -1656,6 +1688,20 @@ def normalize_bot_count(amount: int) -> int:
     if amount > BOT_CREATE_MAX_COUNT:
 
         raise RuntimeError(f"за раз можно создать максимум {BOT_CREATE_MAX_COUNT}")
+
+    return amount
+
+
+
+def normalize_bot_count_per_account(amount: int) -> int | None:
+
+    if amount == 0:
+
+        return None
+
+    if amount < 0:
+
+        raise RuntimeError("лимит токенов на аккаунт не может быть меньше 0")
 
     return amount
 
@@ -2352,6 +2398,74 @@ async def _drop_batch_account(
             await item_callback(item)
 
     await _emit_runtime_progress(progress_callback, state)
+
+
+
+async def _fail_remaining_batch_items(
+
+    progress_callback: BotBatchProgressCallback | None,
+
+    item_callback: BotBatchItemCallback | None,
+
+    state: _BatchRuntimeState,
+
+    work_queue: asyncio.Queue[int],
+
+    error: str,
+
+) -> None:
+
+    failed_items: list[BotBatchItem] = []
+
+    async with state.lock:
+
+        while True:
+
+            try:
+
+                pending_index = work_queue.get_nowait()
+
+            except asyncio.QueueEmpty:
+
+                break
+
+            failed_items.append(
+
+                BotBatchItem(
+
+                    index=pending_index,
+
+                    ok=False,
+
+                    account_title="нет аккаунта",
+
+                    name=build_bot_display_name(
+
+                        state.base_bot_name,
+
+                        state.extra_usernames,
+
+                        pending_index,
+
+                    ),
+
+                    error=error,
+
+                )
+
+            )
+
+        state.items.extend(failed_items)
+
+    if item_callback is not None:
+
+        for item in failed_items:
+
+            await item_callback(item)
+
+    if failed_items:
+
+        await _emit_runtime_progress(progress_callback, state)
 
 
 

@@ -68,6 +68,28 @@ def _optional_int(name: str, default: int) -> int:
 
 
 
+def _optional_bool(name: str, default: bool) -> bool:
+
+    value = os.environ.get(name)
+
+    if value is None:
+
+        return default
+
+    normalized = value.strip().casefold()
+
+    if normalized in {"1", "true", "yes", "y", "on"}:
+
+        return True
+
+    if normalized in {"0", "false", "no", "n", "off"}:
+
+        return False
+
+    raise RuntimeError(f"{name} must be a boolean")
+
+
+
 def _optional_path(name: str, default: Path) -> Path:
 
     value = os.environ.get(name)
@@ -164,9 +186,13 @@ ACCOUNT_IMPORT_MAX_ARCHIVE_FILES = _optional_int("ACCOUNT_IMPORT_MAX_ARCHIVE_FIL
 
 BOT_CREATE_CONCURRENCY = _optional_int("BOT_CREATE_CONCURRENCY", 2)
 
+BOT_CREATE_MAX_PER_ACCOUNT = _optional_int("BOT_CREATE_MAX_PER_ACCOUNT", 1)
+
 BOT_CREATE_MAX_COUNT = _optional_int("BOT_CREATE_MAX_COUNT", 50)
 
 BOT_USERNAME_MAX_ATTEMPTS = _optional_int("BOT_USERNAME_MAX_ATTEMPTS", 300)
+
+BOT_USERNAME_PRECHECK = _optional_bool("BOT_USERNAME_PRECHECK", False)
 
 BOT_CREATE_DELAY_MIN_SECONDS = _optional_int("BOT_CREATE_DELAY_MIN_SECONDS", 15)
 

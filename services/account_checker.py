@@ -90,9 +90,7 @@ async def check_accounts_and_cleanup(owner_user_id: int) -> AccountCheckResult:
 
                 except asyncio.TimeoutError:
 
-                    await delete_account(owner_user_id, account.id)
-
-                    return (account.id, title, False, "таймаут подключения — удалён")
+                    return (account.id, title, False, "таймаут подключения")
 
                 try:
 
@@ -100,9 +98,7 @@ async def check_accounts_and_cleanup(owner_user_id: int) -> AccountCheckResult:
 
                 except asyncio.TimeoutError:
 
-                    await delete_account(owner_user_id, account.id)
-
-                    return (account.id, title, False, "таймаут проверки — удалён")
+                    return (account.id, title, False, "таймаут проверки")
 
                 if not authorized:
 
@@ -116,15 +112,11 @@ async def check_accounts_and_cleanup(owner_user_id: int) -> AccountCheckResult:
 
                 except asyncio.TimeoutError:
 
-                    await delete_account(owner_user_id, account.id)
-
-                    return (account.id, title, False, "не отвечает — удалён")
+                    return (account.id, title, False, "не отвечает")
 
                 if me is None:
 
-                    await delete_account(owner_user_id, account.id)
-
-                    return (account.id, title, False, "не удалось получить профиль — удалён")
+                    return (account.id, title, False, "не удалось получить профиль")
 
                 return (account.id, title, True, None)
 
