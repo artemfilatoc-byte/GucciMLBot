@@ -234,23 +234,51 @@ def format_import_report(results: Sequence["AccountCheck"]) -> str:
 
     invalid = sum(1 for result in results if result.invalid)
 
+    duplicate = sum(1 for result in results if result.duplicate)
+
+    rows = [
+
+        "<b>Импорт аккаунтов</b>",
+
+        f"Проверено: <code>{len(results)}</code>",
+
+        f"Добавлено: <code>{created}</code>",
+
+        f"Обновлено: <code>{updated}</code>",
+
+        f"Отклонено: <code>{failed}</code>",
+
+        f"Невалидных: <code>{invalid}</code>",
+
+    ]
+
+    if duplicate:
+
+        rows.append(f"Дубликатов: <code>{duplicate}</code>")
+
+    rejected = [result for result in results if not result.ok]
+
+    if rejected:
+
+        rows.append("")
+
+        rows.append("<b>Причины отклонения:</b>")
+
+        for result in rejected[:10]:
+
+            title = result.account_title or result.filename
+
+            reason = result.error or "неизвестная ошибка"
+
+            rows.append(f"{escape(title)} — {escape(reason)}")
+
+        if len(rejected) > 10:
+
+            rows.append(f"...и ещё {len(rejected) - 10}")
+
     return "\n".join(
 
-        [
-
-            "<b>Добавлено аккаунтов</b>",
-
-            f"Проверено: <code>{len(results)}</code>",
-
-            f"Добавлено: <code>{created}</code>",
-
-            f"Обновлено: <code>{updated}</code>",
-
-            f"Отклонено: <code>{failed}</code>",
-
-            f"Невалидных: <code>{invalid}</code>",
-
-        ]
+        rows
 
     )
 

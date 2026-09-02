@@ -4,7 +4,7 @@ from typing import Literal
 
 
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, select, update
 
 
 
@@ -14,7 +14,7 @@ from models import TelegramAccount
 
 
 
-AccountSaveResult = Literal["created", "duplicate"]
+AccountSaveResult = Literal["created", "updated", "duplicate"]
 
 
 
@@ -54,7 +54,67 @@ async def upsert_account(
 
     async with Session() as session:
 
-        existing_id = await session.scalar(
+        existing_account = await session.scalar(
+
+            select(TelegramAccount).where(
+
+                TelegramAccount.owner_user_id == owner_user_id,
+
+                TelegramAccount.telegram_id == payload.telegram_id,
+
+            )
+
+        )
+
+        checked_at = now_msk()
+
+        if existing_account is not None:
+
+            values = {
+
+                "phone": payload.phone,
+
+                "username": payload.username,
+
+                "first_name": payload.first_name,
+
+                "last_name": payload.last_name,
+
+                "session_string": payload.session_string,
+
+                "dc_id": payload.dc_id,
+
+                "last_checked_at": checked_at,
+
+                "updated_at": checked_at,
+
+            }
+
+            if payload.proxy_url is not None:
+
+                values["proxy_url"] = payload.proxy_url
+
+            await session.execute(
+
+                update(TelegramAccount)
+
+                .where(
+
+                    TelegramAccount.owner_user_id == owner_user_id,
+
+                    TelegramAccount.telegram_id == payload.telegram_id,
+
+                )
+
+                .values(**values)
+
+            )
+
+            await session.commit()
+
+            return "updated"
+
+        other_owner_account_id = await session.scalar(
 
             select(TelegramAccount.id).where(
 
@@ -64,13 +124,11 @@ async def upsert_account(
 
         )
 
-        if existing_id is not None:
+        if other_owner_account_id is not None:
 
             return "duplicate"
 
 
-
-        checked_at = now_msk()
 
         values = {
 
@@ -303,10 +361,6 @@ async def set_account_proxy(
     owner_user_id: int, account_id: int, proxy_url: str | None
 
 ) -> bool:
-
-    from sqlalchemy import update
-
-
 
     async with Session() as session:
 
