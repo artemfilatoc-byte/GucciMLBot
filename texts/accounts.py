@@ -40,6 +40,8 @@ ACCOUNTS_CHECK_STARTED = "Проверяю аккаунты... Это займе
 
 ACCOUNTS_CHECK_EMPTY = "Аккаунтов нет."
 
+ACCOUNTS_OPEN_ERROR = "Не удалось открыть аккаунты. Попробуй ещё раз."
+
 ACCOUNTS_CHECK_PROGRESS = "<b>Проверка аккаунтов</b>\n{done}/{total} — валидных: {valid}, удалено: {deleted}"
 
 PROXY_UPLOAD_PROMPT = (

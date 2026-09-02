@@ -1,6 +1,14 @@
+import logging
+
+from contextlib import suppress
+
+
+
 from aiogram import Bot, F, Router
 
 from aiogram.enums import ChatType
+
+from aiogram.exceptions import TelegramBadRequest
 
 from aiogram.fsm.context import FSMContext
 
@@ -92,6 +100,8 @@ from texts.accounts import (
 
     ACCOUNTS_DELETE_ALL_EMPTY,
 
+    ACCOUNTS_OPEN_ERROR,
+
     ACCOUNT_IMPORT_INVALID_FILE,
 
     ACCOUNT_IMPORT_PROMPT,
@@ -130,6 +140,8 @@ _rejected_account_import_media_groups: set[str] = set()
 
 _active_account_checks: set[int] = set()
 
+logger = logging.getLogger(__name__)
+
 
 
 
@@ -152,7 +164,31 @@ class AccountProxyState(StatesGroup):
 
 async def open_accounts(callback: CallbackQuery) -> None:
 
-    await _render_accounts(callback, parse_page(callback.data, ACCOUNTS_PAGE_PREFIX))
+    with suppress(TelegramBadRequest):
+
+        await callback.answer()
+
+    try:
+
+        await _render_accounts(
+
+            callback,
+
+            parse_page(callback.data, ACCOUNTS_PAGE_PREFIX),
+
+            answer_callback=False,
+
+        )
+
+    except Exception:
+
+        logger.exception("Failed to open accounts for user %s", callback.from_user.id)
+
+        if isinstance(callback.message, Message):
+
+            with suppress(TelegramBadRequest):
+
+                await callback.message.answer(ACCOUNTS_OPEN_ERROR)
 
 
 
@@ -538,6 +574,8 @@ async def _render_accounts(
 
     notice: str | None = None,
 
+    answer_callback: bool = True,
+
 ) -> None:
 
     owner = await upsert_callback_user(callback)
@@ -597,6 +635,8 @@ async def _render_accounts(
         ),
 
         notice,
+
+        answer_callback=answer_callback,
 
     )
 

@@ -1,10 +1,12 @@
+import logging
+
 from contextlib import suppress
 
 
 
 from aiogram.exceptions import TelegramBadRequest
 
-from aiogram.types import CallbackQuery, InlineKeyboardMarkup
+from aiogram.types import CallbackQuery, InlineKeyboardMarkup, Message
 
 from aiogram.types import User as AiogramUser
 
@@ -13,6 +15,10 @@ from aiogram.types import User as AiogramUser
 from models import User
 
 from repositories.user import upsert_user
+
+
+
+logger = logging.getLogger(__name__)
 
 
 
@@ -28,17 +34,35 @@ async def edit_callback_message(
 
     notice: str | None = None,
 
+    answer_callback: bool = True,
+
 ) -> None:
 
-    await callback.answer(notice)
+    if answer_callback:
 
-    if callback.message is None:
+        with suppress(TelegramBadRequest):
+
+            await callback.answer(notice)
+
+    if not isinstance(callback.message, Message):
 
         return
 
-    with suppress(TelegramBadRequest):
+    try:
 
         await callback.message.edit_text(text, reply_markup=markup)
+
+    except TelegramBadRequest as exc:
+
+        if "message is not modified" in str(exc).casefold():
+
+            return
+
+        logger.warning("Failed to edit callback message", exc_info=True)
+
+        with suppress(TelegramBadRequest):
+
+            await callback.message.answer(text, reply_markup=markup)
 
 
 
